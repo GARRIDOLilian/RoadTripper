@@ -1,0 +1,54 @@
+# This workflow will do a clean installation of node dependencies, cache/restore them, build the source code and run tests across different versions of node
+# For more information see: https://help.github.com/actions/language-and-framework-guides/using-nodejs-with-github-actions
+
+name: Node.js CI
+
+on:
+  pull_request:
+    branches: ["development"]
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+
+    strategy:
+      matrix:
+        node-version: [14.x]
+        # See supported Node.js release schedule at https://nodejs.org/en/about/releases/
+
+    steps:
+      - uses: actions/checkout@v3
+      - name: Use Node.js ${{ matrix.node-version }}
+        uses: actions/setup-node@v3
+        with:
+          node-version: ${{ matrix.node-version }}
+          cache: "npm"
+      #      - name: Use artefact
+      #        uses: actions/upload-artifact@v3
+      #        with:
+      #          name: my-artifact
+      #         path: ./artifact/
+      - name: Test API
+        # continue-on-error: true
+        env:
+          TOKEN_SECRET: S%NWeRJ"cJF%MxP[>ie#
+          DB_USER: root
+          DB_PASSWORD: XFJ3j9R2dAxZcZD
+          DB_HOST: "localhost"
+          DB_PORT: 27017
+          DB_NAME: epicroadtrip_g25
+          DBURL: mongodb+srv://student_master:XFJ3j9R2dAxZcZD@clustertrainning.iixxh.mongodb.net/epicroadtrip_g25?retryWrites=true&w=majority
+          TOKEN_KEY: GjRVKc;>1*h`692%j6o$5jfsnb?@W?jbhn([Z5b15no>wu9qey2ze;x2~YO,y,BcY?A31&~v^C@eibVQA?QqwX!}#_A+90~$,PUt
+          OPENTRIP_TOKEN: 5ae2e3f221c38a28845f05b683acb574bd21efbaf92a13061f38c0ed
+          MAPBOX_API: pk.eyJ1IjoidGhlZmx5aW5ncGFuIiwiYSI6ImNsMnU1MzZpaTBhcmYzZnA1NzhjZXN0Mm0ifQ.fzbGPdLG7roa07G7AzVEUQ
+        run: |
+          cd api
+          npm ci
+          npm test
+      - name: Test Front
+        # continue-on-error: true
+        run: |
+          ls
+          cd epic_road_trip
+          npm ci
+          npm test

@@ -1,0 +1,65 @@
+version: "3"
+services:
+  epic_road_trip:
+    build:
+      context: ./epic_road_trip
+      dockerfile: Dockerfile.build
+    ports:
+      - 3000:3000
+    container_name: ert-front
+    networks:
+      - mern-stack-net
+    volumes:
+      - ./epic_road_trip/src:/usr/app/src
+      - ./epic_road_trip/public:/usr/app/public
+    depends_on:
+      - api
+    stdin_open: true
+    tty: true
+
+  api:
+    build:
+      context: ./api
+      dockerfile: Dockerfile
+    env_file: ./api/.env
+    ports:
+      - 8000:8000
+    container_name: ert-api
+    networks:
+      - mern-stack-net
+    volumes:
+      - ./api/src:/usr/app/src
+      - /app/node_modules/bcrypt/
+    depends_on:
+      - db
+    environment:
+      - DB_HOST:${DB_HOST}
+      - DBURL=${DBURL}
+      - DB_USER=${DB_USER}
+      - DB_PASSWORD=${DB_PASSWORD}
+      - DB_PORT=${DB_PORT}
+      - DB_NAME=${DB_NAME}
+      - OPENTRIP_TOKEN=${OPENTRIP_TOKEN}
+      - TOKEN_SECRET=${TOKEN_SECRET}
+      - TOKEN_KEY=${TOKEN_KEY}
+  db:
+    image: mongo
+    container_name: mongo-db
+    env_file: ./api/.env
+    networks:
+      - mern-stack-net
+    environment:
+      - MONGO_INITDB_ROOT_USERNAME=${DB_USER}
+      - MONGO_INITDB_ROOT_PASSWORD=${DB_PASSWORD}
+    ports:
+      - ${DB_PORT}:${DB_PORT}
+    volumes:
+      - mongo-data:/data/db
+
+networks:
+  mern-stack-net:
+    driver: bridge
+
+volumes:
+  mongo-data:
+    driver: local

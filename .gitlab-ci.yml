@@ -1,0 +1,108 @@
+image: docker:latest
+
+stages:
+  - build-ui
+  - release-image-ui
+  - deploy-ui
+  - build-api
+  - release-image-api
+  - deploy-api
+
+build-ui:
+  stage: build-ui
+  only:
+    refs:
+      - main # It only runs when *both* jobs in the test stage complete successfully.
+  tags:
+    - mscpro-builder
+  script:
+    - cd epic_road_trip
+    - docker build -t ${HEROKU_APP_NAME} .
+    - docker save ${HEROKU_APP_NAME} > $CI_PROJECT_DIR/${HEROKU_APP_NAME}.tar
+  artifacts:
+    paths:
+      - ${HEROKU_APP_NAME}.tar
+
+release-image-ui:
+  stage: release-image-ui
+  only:
+    refs:
+      - main # It only runs when *both* jobs in the test stage complete successfully.
+  script:
+    - docker load < ${HEROKU_APP_NAME}.tar
+    - docker tag ${HEROKU_APP_NAME} "${IMAGE_NAME}:${CI_COMMIT_REF_NAME}"
+    - docker tag ${HEROKU_APP_NAME} "${IMAGE_NAME}:${CI_COMMIT_SHORT_SHA}"
+    - docker login -u "${CI_REGISTRY_USER}" -p "${CI_REGISTRY_PASSWORD}" $CI_REGISTRY
+    - docker push "${IMAGE_NAME}:${CI_COMMIT_REF_NAME}"
+    - docker push "${IMAGE_NAME}:${CI_COMMIT_SHORT_SHA}"
+deploy-ui: # This job runs in the deploy stage.
+  stage: deploy-ui
+  environment:
+    name: prod
+    url: https://${HEROKU_APP_NAME}.herokuapp.com
+  only:
+    refs:
+      - main # It only runs when *both* jobs in the test stage complete successfully.
+  tags:
+    - mscpro-builder
+  script:
+    - echo "Deploying application..."
+    # - docker load < ${HEROKU_APP_NAME}.tar
+    - cd epic_road_trip
+    - apk --no-cache add npm
+    - npm install -g heroku
+    - heroku container:login
+    - heroku create ${HEROKU_APP_NAME} || echo "Porject already exists"
+    - heroku container:push -a ${HEROKU_APP_NAME} web
+    - heroku container:release -a ${HEROKU_APP_NAME} web
+    - echo "Application successfully deployed."
+
+build-api:
+  stage: build-api
+  only:
+    refs:
+      - main # It only runs when *both* jobs in the test stage complete successfully.
+  tags:
+    - mscpro-builder
+  script:
+    - cd api
+    - docker build -t ${HEROKU_API_NAME} .
+    - docker save ${HEROKU_API_NAME} > $CI_PROJECT_DIR/${HEROKU_API_NAME}.tar
+  artifacts:
+    paths:
+      - ${HEROKU_API_NAME}.tar
+
+release-image-api:
+  stage: release-image-api
+  only:
+    refs:
+      - main # It only runs when *both* jobs in the test stage complete successfully.
+  script:
+    - docker load < ${HEROKU_API_NAME}.tar
+    - docker tag ${HEROKU_API_NAME} "${IMAGE_NAME}:${CI_COMMIT_REF_NAME}"
+    - docker tag ${HEROKU_API_NAME} "${IMAGE_NAME}:${CI_COMMIT_SHORT_SHA}"
+    - docker login -u "${CI_REGISTRY_USER}" -p "${CI_REGISTRY_PASSWORD}" $CI_REGISTRY
+    - docker push "${IMAGE_NAME}:${CI_COMMIT_REF_NAME}"
+    - docker push "${IMAGE_NAME}:${CI_COMMIT_SHORT_SHA}"
+
+deploy-api: # This job runs in the deploy stage.
+  stage: deploy-api
+  environment:
+    name: prod
+    url: https://${HEROKU_API_NAME}.herokuapp.com
+  only:
+    refs:
+      - main # It only runs when *both* jobs in the test stage complete successfully.
+  tags:
+    - mscpro-builder
+  script:
+    - echo "Deploying application..."
+    # - docker load < ${HEROKU_API_NAME}.tar
+    - cd api
+    - apk --no-cache add npm
+    - npm install -g heroku
+    - heroku container:login
+    - heroku create ${HEROKU_API_NAME} || echo "Porject already exists"
+    - heroku container:push -a ${HEROKU_API_NAME} web
+    - heroku container:release -a ${HEROKU_API_NAME} web
+    - echo "Application successfully deployed."
